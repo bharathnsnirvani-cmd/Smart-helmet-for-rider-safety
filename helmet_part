@@ -1,0 +1,81 @@
+#include <RH_ASK.h>
+#include <SPI.h>
+
+#define IR_PIN 2
+#define MQ2_PIN A0
+
+#define GREEN_LED 4
+#define RED_LED 5
+
+RH_ASK rf_driver(2000, 11, 12);
+
+void setup() {
+
+  Serial.begin(9600);
+
+  pinMode(IR_PIN, INPUT);
+
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+
+  if (!rf_driver.init()) {
+    Serial.println("RF INIT FAILED");
+  }
+}
+
+void loop() {
+
+  int helmet = digitalRead(IR_PIN);
+
+  int alcohol = analogRead(MQ2_PIN);
+
+  Serial.print("Helmet: ");
+  Serial.println(helmet);
+
+  Serial.print("Alcohol: ");
+  Serial.println(alcohol);
+
+  // SAFE
+  if (helmet == LOW && alcohol < 300) {
+
+    const char *msg = "SAFE";
+
+    rf_driver.send((uint8_t *)msg, strlen(msg));
+    rf_driver.waitPacketSent();
+
+    Serial.println("SAFE SENT");
+
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+  }
+
+  // HELMET OFF
+  else if (helmet == HIGH) {
+
+    const char *msg = "HELMET_OFF";
+
+    rf_driver.send((uint8_t *)msg, strlen(msg));
+    rf_driver.waitPacketSent();
+
+    Serial.println("HELMET_OFF SENT");
+
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GREEN_LED, LOW);
+  }
+
+  // ALCOHOL
+  else if (alcohol > 300) {
+
+    const char *msg = "ALCOHOL";
+
+    rf_driver.send((uint8_t *)msg, strlen(msg));
+    rf_driver.waitPacketSent();
+
+    Serial.println("ALCOHOL SENT");
+
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GREEN_LED, LOW);
+  }
+
+  delay(500);
+}
