@@ -1,0 +1,105 @@
+#include <RH_ASK.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27,16,2);
+
+RH_ASK rf_driver(2000, 11, 12);
+
+#define RELAY_PIN 7
+#define BUTTON_PIN 6
+#define RED_LED 5
+
+bool helmetOn = false;
+bool alcoholOk = false;
+bool vehicleRunning = false;
+
+void setup() {
+
+  Serial.begin(9600);
+
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(RED_LED, OUTPUT);
+
+  digitalWrite(RELAY_PIN, HIGH);
+
+  lcd.init();
+  lcd.backlight();
+
+  if (!rf_driver.init()) {
+    Serial.println("RF FAIL");
+  }
+
+  lcd.print("SMART VEHICLE");
+}
+
+void loop() {
+
+  uint8_t buf[20];
+  uint8_t buflen = sizeof(buf);
+
+  if (rf_driver.recv(buf, &buflen)) {
+
+    buf[buflen] = '\0';
+
+    String msg = String((char*)buf);
+
+    Serial.println(msg);
+
+    if (msg == "SAFE") {
+
+      helmetOn = true;
+      alcoholOk = true;
+
+      lcd.clear();
+      lcd.print("HELMET OK");
+      lcd.setCursor(0,1);
+      lcd.print("PRESS BUTTON");
+    }
+
+    else if (msg == "HELMET_OFF") {
+
+      helmetOn = false;
+
+      digitalWrite(RELAY_PIN, HIGH);
+
+      lcd.clear();
+      lcd.print("WEAR HELMET");
+    }
+
+    else if (msg == "ALCOHOL") {
+
+      alcoholOk = false;
+
+      digitalWrite(RELAY_PIN, HIGH);
+
+      lcd.clear();
+      lcd.print("ALCOHOL");
+      lcd.setCursor(0,1);
+      lcd.print("DETECTED");
+    }
+  }
+
+  if (digitalRead(BUTTON_PIN) == LOW) {
+
+    if (helmetOn && alcoholOk) {
+
+      digitalWrite(RELAY_PIN, LOW);
+
+      lcd.clear();
+      lcd.print("VEHICLE ON");
+    }
+
+    else {
+
+      lcd.clear();
+      lcd.print("NOT SAFE");
+
+      digitalWrite(RED_LED, HIGH);
+      delay(500);
+      digitalWrite(RED_LED, LOW);
+    }
+  }
+}
