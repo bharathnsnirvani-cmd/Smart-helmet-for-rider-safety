@@ -1,0 +1,187 @@
+import tkinter as tk
+from tkinter import messagebox
+import serial
+from datetime import datetime
+
+# ---------------- SERIAL CONNECTION ----------------
+# CHANGE COM PORT IF NEEDED
+arduino = serial.Serial('COM16', 9600)
+
+# ---------------- WINDOW ----------------
+root = tk.Tk()
+root.title("Smart Helmet Safety Monitoring System")
+root.geometry("1000x650")
+root.configure(bg="#121212")
+
+# ---------------- VARIABLES ----------------
+total_rides = 0
+safe_rides = 0
+violations = 0
+last_detection = "None"
+
+# ---------------- TITLE ----------------
+title = tk.Label(
+    root,
+    text="SMART HELMET SAFETY MONITORING SYSTEM",
+    font=("Arial", 22, "bold"),
+    bg="#121212",
+    fg="cyan"
+)
+title.pack(pady=15)
+
+# ---------------- LEFT FRAME ----------------
+left = tk.Frame(root, bg="#1f1f1f", bd=3, relief="ridge")
+left.place(x=30, y=80, width=430, height=520)
+
+# ---------------- RIGHT FRAME ----------------
+right = tk.Frame(root, bg="#1f1f1f", bd=3, relief="ridge")
+right.place(x=520, y=80, width=430, height=520)
+
+# ---------------- STATUS SECTION ----------------
+status_title = tk.Label(
+    left,
+    text="Rider Safety Status",
+    font=("Arial", 18, "bold"),
+    bg="#1f1f1f",
+    fg="cyan"
+)
+status_title.pack(pady=10)
+
+helmet_label = tk.Label(left, text="Helmet Worn : ---", font=("Arial", 15), bg="#1f1f1f", fg="white")
+helmet_label.pack(anchor="w", padx=20, pady=10)
+
+alcohol_label = tk.Label(left, text="Alcohol Detected : ---", font=("Arial", 15), bg="#1f1f1f", fg="white")
+alcohol_label.pack(anchor="w", padx=20, pady=10)
+
+bike_label = tk.Label(left, text="Bike Status : ---", font=("Arial", 15), bg="#1f1f1f", fg="white")
+bike_label.pack(anchor="w", padx=20, pady=10)
+
+rf_label = tk.Label(left, text="RF Communication : ACTIVE", font=("Arial", 15), bg="#1f1f1f", fg="lime")
+rf_label.pack(anchor="w", padx=20, pady=10)
+
+relay_label = tk.Label(left, text="Relay Status : ---", font=("Arial", 15), bg="#1f1f1f", fg="white")
+relay_label.pack(anchor="w", padx=20, pady=10)
+
+# ---------------- SENSOR PANEL ----------------
+sensor_title = tk.Label(
+    left,
+    text="Live Sensor Panel",
+    font=("Arial", 18, "bold"),
+    bg="#1f1f1f",
+    fg="cyan"
+)
+sensor_title.pack(pady=20)
+
+moisture_label = tk.Label(left, text="Alcohol Value : ---", font=("Arial", 15), bg="#1f1f1f", fg="white")
+moisture_label.pack(anchor="w", padx=20, pady=10)
+
+helmet_sensor = tk.Label(left, text="Helmet Sensor : ---", font=("Arial", 15), bg="#1f1f1f", fg="white")
+helmet_sensor.pack(anchor="w", padx=20, pady=10)
+
+# ---------------- ANALYTICS ----------------
+analytics_title = tk.Label(
+    right,
+    text="Ride Analytics",
+    font=("Arial", 18, "bold"),
+    bg="#1f1f1f",
+    fg="cyan"
+)
+analytics_title.pack(pady=10)
+
+rides_label = tk.Label(right, text="Total Rides : 0", font=("Arial", 15), bg="#1f1f1f", fg="white")
+rides_label.pack(anchor="w", padx=20, pady=10)
+
+safe_label = tk.Label(right, text="Safe Rides : 0", font=("Arial", 15), bg="#1f1f1f", fg="white")
+safe_label.pack(anchor="w", padx=20, pady=10)
+
+violation_label = tk.Label(right, text="Violations Detected : 0", font=("Arial", 15), bg="#1f1f1f", fg="white")
+violation_label.pack(anchor="w", padx=20, pady=10)
+
+helmet_time_label = tk.Label(right, text="Last Helmet Detection : None", font=("Arial", 15), bg="#1f1f1f", fg="white")
+helmet_time_label.pack(anchor="w", padx=20, pady=10)
+
+# ---------------- SOS SECTION ----------------
+sos_title = tk.Label(
+    right,
+    text="Emergency SOS Section",
+    font=("Arial", 18, "bold"),
+    bg="#1f1f1f",
+    fg="red"
+)
+sos_title.pack(pady=20)
+
+def send_alert():
+    messagebox.showinfo("SOS ALERT", "Emergency Alert Sent")
+
+sos_button = tk.Button(
+    right,
+    text="SEND SOS ALERT",
+    font=("Arial", 14, "bold"),
+    bg="red",
+    fg="white",
+    padx=20,
+    pady=10,
+    command=send_alert
+)
+sos_button.pack(pady=20)
+
+# ---------------- READ SERIAL DATA ----------------
+def update_dashboard():
+    global total_rides, safe_rides, violations, last_detection
+
+    if arduino.in_waiting:
+
+        data = arduino.readline().decode().strip()
+
+        print(data)
+
+        # SAFE
+        if data == "SAFE":
+
+            helmet_label.config(text="Helmet Worn : YES", fg="lime")
+            alcohol_label.config(text="Alcohol Detected : NO", fg="lime")
+            bike_label.config(text="Bike Status : ON", fg="lime")
+            relay_label.config(text="Relay Status : ACTIVE", fg="lime")
+
+            helmet_sensor.config(text="Helmet Sensor : DETECTED", fg="lime")
+
+            moisture_label.config(text="Alcohol Value : SAFE", fg="lime")
+
+            total_rides += 1
+            safe_rides += 1
+
+            last_detection = datetime.now().strftime("%H:%M:%S")
+
+        # HELMET OFF
+        elif data == "HELMET_OFF":
+
+            helmet_label.config(text="Helmet Worn : NO", fg="red")
+            bike_label.config(text="Bike Status : OFF", fg="red")
+            relay_label.config(text="Relay Status : OFF", fg="red")
+
+            helmet_sensor.config(text="Helmet Sensor : NOT DETECTED", fg="red")
+
+            violations += 1
+
+        # ALCOHOL
+        elif data == "ALCOHOL":
+
+            alcohol_label.config(text="Alcohol Detected : YES", fg="red")
+            bike_label.config(text="Bike Status : OFF", fg="red")
+            relay_label.config(text="Relay Status : OFF", fg="red")
+
+            moisture_label.config(text="Alcohol Value : HIGH", fg="red")
+
+            violations += 1
+
+        # UPDATE ANALYTICS
+        rides_label.config(text=f"Total Rides : {total_rides}")
+        safe_label.config(text=f"Safe Rides : {safe_rides}")
+        violation_label.config(text=f"Violations Detected : {violations}")
+        helmet_time_label.config(text=f"Last Helmet Detection : {last_detection}")
+
+    root.after(100, update_dashboard)
+
+update_dashboard()
+
+root.mainloop()
